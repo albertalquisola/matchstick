@@ -1,156 +1,131 @@
-function combinations (matchstickPattern) {
-  let combinations = []
+const matchstickMap = require('./matchstickMap');
+
+function combinations(matchstickPattern) {
+  let combinations = [];
 
   for (let i = 0; i < matchstickPattern.length; i++) {
-    let currentInt = matchstickPattern[i]
+    let currentPattern = matchstickPattern[i];
 
-    for (let j = 0; j < currentInt.length; j++) {
-      if (matchstickPattern[i][j] === 0) {
-        continue // encountered a non-existent matchstick
+    for (let j = 0; j < currentPattern.length; j++) {
+      if (!canMoveMatchstick(matchstickPattern, [i, j])) {
+        continue;
       }
 
-      let stringOuter = i.toString()
-      let stringInner = j.toString()
-      let isAddition = stringOuter === '1' && stringInner === '1' ? false : true
-
-      combinations = combinations.concat(
-        moveMatchStick([...matchstickPattern], [i, j], isAddition)
-      )
+      combinations = combinations.concat(moveMatchStick([...matchstickPattern], [i, j]));
     }
   }
 
-  return combinations
+  return combinations;
 }
 
-function moveMatchStick (matchStickPattern, currentMatchstick, isAddition) {
-  let validCombinations = []
-  let outerIndex = currentMatchstick[0]
-  let innerIndex = currentMatchstick[1]
+function canMoveMatchstick(matchstickPattern, currentMatchstick) {
+  let [outerIndex, innerIndex] = currentMatchstick;
 
-  for (let i = 0; i < matchStickPattern.length; i++) {
-    if (i === 1) {
-      continue
-    }
+  if (matchstickPattern[outerIndex][innerIndex] === '0') {
+    return false; // empty space, matchstick does not exist
+  }
 
-    for (let j = 0; j < matchStickPattern[i].length; j++) {
-      if (i === outerIndex && j === innerIndex) {
-        continue // dont place the matchstick on itself
+  if (outerIndex === 1 && innerIndex === 0) {
+    return false; // do not move the horizontal matchstick in the plus sign
+  }
+
+  return true;
+}
+
+function moveMatchStick(matchstickPattern, currentMatchstick) {
+  let validCombinations = [];
+  let outerIndex = currentMatchstick[0];
+  let innerIndex = currentMatchstick[1];
+
+  // always addition unless we're moving the vertical matchstick in the + sign
+  let isAddition = outerIndex !== 1 || innerIndex !== 1;
+
+  for (let i = 0; i < matchstickPattern.length; i++) {
+    for (let j = 0; j < matchstickPattern[i].length; j++) {
+      if ((i === outerIndex && j === innerIndex) || matchstickPattern[i][j] === '1') {
+        continue; // dont place the matchstick onto itself or onto an existing matchstick
       }
 
-      if (matchStickPattern[i][j] === '1') {
-        continue
+      matchstickPattern[outerIndex][innerIndex] = '0';
+      matchstickPattern[i][j] = '1';
+
+      let expression = convertToExpression(matchstickPattern);
+
+      if (validCombination(expression, isAddition)) {
+        isAddition ? expression.splice(1, 0, '+') : expression.splice(1, 0, '-');
+        expression.splice(expression.length - 1, 0, '=');
+
+        validCombinations.push(expression);
       }
 
-      matchStickPattern[outerIndex][innerIndex] = '0'
-      matchStickPattern[i][j] = '1'
-
-      if (validCombination(matchStickPattern, isAddition)) {
-        validCombinations.push(convertToComputation(matchStickPattern))
-      }
-
-      matchStickPattern[outerIndex][innerIndex] = '1'
-      matchStickPattern[i][j] = '0'
+      matchstickPattern[outerIndex][innerIndex] = '1';
+      matchstickPattern[i][j] = '0';
     }
   }
 
-  return validCombinations
+  return validCombinations;
 }
 
-function validCombination (matchStickPattern, isAddition) {
-  // validate the matckstick pattern
-  // log if valid example: '0 + 4 = 4'
+function validExpression(expression) {
+  let [firstDigit, secondDigit, result] = expression;
+  return Number.isInteger(firstDigit) && Number.isInteger(secondDigit) && Number.isInteger(result);
+}
 
-  let [firstDigit, secondDigit, result] = convertToComputation(
-    matchStickPattern
-  )
+function validCombination(expression, isAddition) {
+  if (!validExpression(expression)) {
+    return false;
+  }
+
+  let [firstDigit, secondDigit, result] = expression;
 
   if (isAddition) {
-    return firstDigit + secondDigit === result
+    return firstDigit + secondDigit === result;
   } else {
-    return firstDigit - secondDigit === result
+    return firstDigit - secondDigit === result;
   }
 }
 
-function convertToComputation (matchStickPattern) {
-  let result =
-    matchStickMap[matchStickPattern[matchStickPattern.length - 1].join('')]
-  let firstDigit = matchStickMap[matchStickPattern[0].join('')]
-  let secondDigit = matchStickMap[matchStickPattern[2].join('')]
+function convertToExpression(matchstickPattern) {
+  let result = matchstickMap[matchstickPattern[matchstickPattern.length - 1].join('')];
+  let firstDigit = matchstickMap[matchstickPattern[0].join('')];
+  let secondDigit = matchstickMap[matchstickPattern[2].join('')];
 
-  return [firstDigit, secondDigit, result]
+  return [firstDigit, secondDigit, result];
 }
 
-const matchStickMap = {
-  '0111111': 0,
-  '0001100': 1,
-  '0100001': 1,
-  '1110110': 2,
-  '1110011': 3,
-  '1101001': 4,
-  '1011011': 5,
-  '1011111': 6,
-  '0110001': 7,
-  '1111111': 8,
-  '1111011': 9
-}
+function renderer() {
+  for (let matchstick in matchstickMap) {
+    let top = ` ${matchstick[2]} \n`;
+    let middle = `${matchstick[3]}${matchstick[0]}${matchstick[1]} \n`;
+    let bottom = `${matchstick[4]}${matchstick[5]}${matchstick[6]} \n`;
 
-function renderer () {
-  for (let matchstick in matchStickMap) {
-    console.log('number is supposed to be: ', matchStickMap[matchstick])
-
-    let top = ` ${matchstick[2]} \n`
-    let middle = `${matchstick[3]}${matchstick[0]}${matchstick[1]} \n`
-    let bottom = `${matchstick[4]}${matchstick[5]}${matchstick[6]} \n`
-
-    console.log(top + middle + bottom)
+    console.log(top + middle + bottom);
   }
 }
 
-console.log(everyCombo())
+function everyCombo() {
+  for (let left in matchstickMap) {
+    let leftString = left.split('');
 
-function everyCombo () {
-  for (let left in matchStickMap) {
-    let leftString = left.split('')
-    for (let right in matchStickMap) {
-      let rightString = right.split('')
+    for (let right in matchstickMap) {
+      let rightString = right.split('');
 
-      for (let result in matchStickMap) {
-        let resultString = result.split('')
-        console.log(
-          convertToComputation([
-            leftString,
-            ['1', '1'],
-            rightString,
-            resultString
-          ])
-        )
-        combinations([leftString, ['1', '1'], rightString, resultString])
+      for (let result in matchstickMap) {
+        let resultString = result.split('');
+        let matchstickPattern = [leftString, ['1', '1'], rightString, resultString];
+        let [firstDigit, secondDigit, resultDigit] = convertToExpression(matchstickPattern);
+        let combos = combinations(matchstickPattern);
 
-        console.log(
-          convertToComputation([
-            leftString,
-            ['1', '0'],
-            rightString,
-            resultString
-          ])
-        )
-        combinations([leftString, ['1', '0'], rightString, resultString])
+        console.log(`matchstick pattern is: ${firstDigit} + ${secondDigit} = ${resultDigit}`);
+        console.log('combos are: ', combos);
       }
     }
   }
 }
 
-// notes
-// need all combinations of valid matchsticks (need a count)
-// must move one matchstick
-// dont modify the equal sign
-// plus sign can be modified but only the vertical matchstick
-// single digits only (for now)
-// int can be comprised of up to 7 matchsticks (upper bound)
-
-// representation of a number
-// decimal value is 6: binary representation of 6 w/ matchsticks is: 1011111
-
-// matchStickPattern = [[1,0,1,1,1,1,1]]
-
-//currentMatchstick === [0, 1];
+module.exports = {
+  combinations,
+  everyCombo,
+  renderer,
+  validCombination,
+};
